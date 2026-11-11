@@ -44,3 +44,4 @@ cp .env.example .env.local   # fill in Supabase URL + secret key + an admin code
 npm install
 npm run dev
 ```
+TEST TEST
