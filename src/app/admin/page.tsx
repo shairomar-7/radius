@@ -43,6 +43,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (problem || !stats || !settings) {
     const missingEnv = /Missing SUPABASE/.test(problem ?? "");
     const missingSchema = /does not exist|schema cache|Could not find/i.test(problem ?? "");
+    const badPath = /Invalid path/i.test(problem ?? "");
     const badKey = /Invalid API key|JWT|apikey|401|permission denied/i.test(problem ?? "");
     return (
       <div className="adm-login">
@@ -52,7 +53,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           {missingEnv && <p>Add <code>SUPABASE_URL</code> and <code>SUPABASE_SECRET_KEY</code> in Vercel → Settings → Environment Variables (Production), then redeploy.</p>}
           {missingSchema && <p>Run <code>supabase/schema.sql</code> in Supabase → SQL Editor.</p>}
           {badKey && <p>Check that <code>SUPABASE_SECRET_KEY</code> is the <strong>secret</strong> (or service_role) key, not the publishable/anon key, and that <code>SUPABASE_URL</code> is the matching project.</p>}
-          {!missingEnv && !missingSchema && !badKey && <p>Check the Supabase env vars in Vercel and that <code>supabase/schema.sql</code> has been run.</p>}
+          {badPath && <p><code>SUPABASE_URL</code> should be just <code>https://xxxx.supabase.co</code> (Project Settings → Data API → Project URL).</p>}
+          {!missingEnv && !missingSchema && !badKey && !badPath && <p>Check the Supabase env vars in Vercel and that <code>supabase/schema.sql</code> has been run.</p>}
         </div>
       </div>
     );

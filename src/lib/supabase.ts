@@ -10,8 +10,15 @@ let client: SupabaseClient | null = null;
  */
 export function db(): SupabaseClient {
   if (client) return client;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Accept common copy-paste variants: trailing slash, /rest/v1, whitespace, quotes.
+  const raw = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/^["']|["']$/g, "");
+  let url = raw;
+  try {
+    if (raw) url = new URL(raw).origin;
+  } catch {
+    url = raw;
+  }
+  const key = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim().replace(/^["']|["']$/g, "");
   if (!url || !key) {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) env vars");
   }
