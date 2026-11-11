@@ -24,20 +24,38 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const sp = await searchParams;
   const includeTest = sp.test === "1";
-  const [{ data, error }, settings] = await Promise.all([
-    db().rpc("exp_admin_stats", { include_test: includeTest }),
-    getSettings(),
-  ]);
-  if (error) {
+  let stats: Stats | null = null;
+  let settings: { wtp_enabled: boolean; commute_enabled: boolean } | null = null;
+  let problem: string | null = null;
+  try {
+    const [{ data, error }, s] = await Promise.all([
+      db().rpc("exp_admin_stats", { include_test: includeTest }),
+      getSettings(),
+    ]);
+    if (error) throw error;
+    stats = data as Stats;
+    settings = s;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : String(e);
+    console.error("admin load error", e);
+    problem = msg;
+  }
+  if (problem || !stats || !settings) {
+    const missingEnv = /Missing SUPABASE/.test(problem ?? "");
+    const missingSchema = /does not exist|schema cache|Could not find/i.test(problem ?? "");
+    const badKey = /Invalid API key|JWT|apikey|401|permission denied/i.test(problem ?? "");
     return (
       <div className="adm-login">
         <div className="adm-login-card">
           <h1>Couldn&apos;t load results</h1>
-          <p>{error.message}</p>
-          <p>Has <code>supabase/schema.sql</code> been run in the Supabase SQL editor?</p>
+          <p className="mono" style={{ wordBreak: "break-word" }}>{problem}</p>
+          {missingEnv && <p>Add <code>SUPABASE_URL</code> and <code>SUPABASE_SECRET_KEY</code> in Vercel → Settings → Environment Variables (Production), then redeploy.</p>}
+          {missingSchema && <p>Run <code>supabase/schema.sql</code> in Supabase → SQL Editor.</p>}
+          {badKey && <p>Check that <code>SUPABASE_SECRET_KEY</code> is the <strong>secret</strong> (or service_role) key, not the publishable/anon key, and that <code>SUPABASE_URL</code> is the matching project.</p>}
+          {!missingEnv && !missingSchema && !badKey && <p>Check the Supabase env vars in Vercel and that <code>supabase/schema.sql</code> has been run.</p>}
         </div>
       </div>
     );
   }
-  return <Dashboard stats={data as Stats} settings={settings} includeTest={includeTest} />;
+  return <Dashboard stats={stats} settings={settings} includeTest={includeTest} />;
 }
