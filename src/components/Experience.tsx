@@ -8,7 +8,6 @@ import FlowSheet from "./FlowSheet";
 
 interface Props {
   demoEmbedUrl: string;
-  demoOpenUrl: string;
 }
 
 async function post<T>(url: string, body: unknown): Promise<T> {
@@ -22,10 +21,19 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export default function Experience({ demoEmbedUrl, demoOpenUrl }: Props) {
+export default function Experience({ demoEmbedUrl }: Props) {
   const [state, setState] = useState<FlowState | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [sheet, setSheet] = useState<Step | null>(null);
+  const [hood, setHood] = useState<string | null>(null);
+  const [nudge, setNudge] = useState<string | null>(null);
+  const [pickHl, setPickHl] = useState(false);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const ownDemo = demoEmbedUrl.startsWith("/");
+  // The iframe src is fixed at first render; later neighborhood changes are sent via postMessage
+  // so the prototype doesn't reload and lose its place.
+  const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const ready = useRef<Promise<void> | null>(null);
   const demoRef = useRef<HTMLElement>(null);
 
@@ -40,6 +48,7 @@ export default function Experience({ demoEmbedUrl, demoOpenUrl }: Props) {
     })
       .then((s) => {
         setState(s);
+        if (s.neighborhood) setHood((h) => h ?? s.neighborhood);
         // Refreshed mid-flow? Pick up where they left off.
         if (s.signedUp && nextStep(s) !== "done") {
           setDemoOpen(true);
@@ -48,6 +57,39 @@ export default function Experience({ demoEmbedUrl, demoOpenUrl }: Props) {
       })
       .catch(() => {});
   }, []);
+
+  // Mount the prototype the first time the demo section opens (also when resuming after a refresh).
+  useEffect(() => {
+    if (!demoOpen || frameSrc) return;
+    const q = new URLSearchParams({ embed: "1" });
+    if (hood) q.set("hood", hood);
+    setFrameSrc(ownDemo ? `${demoEmbedUrl}?${q}` : demoEmbedUrl);
+  }, [demoOpen, frameSrc, hood, ownDemo, demoEmbedUrl]);
+
+  // Send the neighborhood into the prototype whenever it changes.
+  useEffect(() => {
+    if (!ownDemo || !hood) return;
+    frameRef.current?.contentWindow?.postMessage({ source: "radius-site", type: "hood", hood }, window.location.origin);
+  }, [hood, ownDemo]);
+
+  // Listen to the prototype: "joined" nudges the interest bar; "pick-location" jumps to the picker.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.source !== "radius-demo") return;
+      if (e.data.type === "ready" && hood) {
+        frameRef.current?.contentWindow?.postMessage({ source: "radius-site", type: "hood", hood }, window.location.origin);
+      } else if (e.data.type === "joined") {
+        setNudge(typeof e.data.title === "string" ? e.data.title : "this group");
+      } else if (e.data.type === "pick-location") {
+        selectRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        selectRef.current?.focus();
+        setPickHl(true);
+        setTimeout(() => setPickHl(false), 1600);
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [hood]);
 
   const track = useCallback(async (event: "demo_opened" | "interest_clicked") => {
     await ready.current; // make sure the session cookie exists first
@@ -129,27 +171,26 @@ export default function Experience({ demoEmbedUrl, demoOpenUrl }: Props) {
           <section className="demo" ref={demoRef} id="demo" aria-label="Interactive prototype">
             <div className="demo-head">
               <h2>Take Radius for a spin</h2>
-              <p>
-                Click through the prototype on the left. On the right, see what might be running near you.
-              </p>
+              <p>This is our clickable prototype, filled with groups that could be running near you.</p>
             </div>
             <div className="demo-grid">
               <div className="phone-col">
                 <div className="phone">
                   <div className="phone-notch" aria-hidden />
-                  <iframe
-                    src={demoEmbedUrl}
-                    title="Radius interactive prototype"
-                    allow="clipboard-write; fullscreen"
-                    allowFullScreen
-                    loading="lazy"
-                  />
+                  {frameSrc && (
+                    <iframe ref={frameRef} src={frameSrc} title="Radius interactive prototype" allow="clipboard-write; fullscreen" allowFullScreen />
+                  )}
                 </div>
-                <a className="open-full" href={demoOpenUrl} target="_blank" rel="noopener noreferrer">
+                <a
+                  className="open-full"
+                  href={ownDemo ? `${demoEmbedUrl}${hood ? `?hood=${encodeURIComponent(hood)}` : ""}` : demoEmbedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Open prototype full screen ↗
                 </a>
               </div>
-              <NearbyPanel initialNeighborhood={state?.neighborhood ?? null} />
+              <NearbyPanel ref={selectRef} neighborhood={hood} onChange={setHood} highlight={pickHl} />
             </div>
           </section>
         )}
@@ -185,9 +226,15 @@ export default function Experience({ demoEmbedUrl, demoOpenUrl }: Props) {
       </footer>
 
       {demoOpen && (
-        <div className="cta-bar" role="region" aria-label="Get early access">
+        <div className={`cta-bar ${nudge && !done ? "cta-nudge" : ""}`} role="region" aria-label="Get early access">
           <div className="cta-inner">
-            <span className="cta-text">{done ? `You're on the list${state?.firstName ? `, ${state.firstName}` : ""}.` : "Would you use this?"}</span>
+            <span className="cta-text">
+              {done
+                ? `You're on the list${state?.firstName ? `, ${state.firstName}` : ""}.`
+                : nudge
+                  ? "Want a spot like that for real?"
+                  : "Would you use this?"}
+            </span>
             {done ? (
               <span className="pill pill-ok">✓ Interested</span>
             ) : (

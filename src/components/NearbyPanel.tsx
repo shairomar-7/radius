@@ -1,23 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { forwardRef, useState } from "react";
 import { NEIGHBORHOODS, nearestNeighborhood } from "@/lib/neighborhoods";
-import { fakeActivities } from "@/lib/activities";
 
 type Status = "idle" | "locating" | "denied" | "outside";
 
 const BOROUGHS = Array.from(new Set(NEIGHBORHOODS.map((n) => n.borough)));
 
-export default function NearbyPanel({ initialNeighborhood }: { initialNeighborhood: string | null }) {
-  const [hood, setHood] = useState<string | null>(initialNeighborhood);
+interface Props {
+  neighborhood: string | null;
+  onChange: (n: string) => void;
+  highlight?: boolean;
+}
+
+/** Location controls beside the prototype. Picking a neighborhood re-populates the prototype. */
+const NearbyPanel = forwardRef<HTMLSelectElement, Props>(function NearbyPanel({ neighborhood, onChange, highlight }, ref) {
   const [status, setStatus] = useState<Status>("idle");
 
-  const save = (neighborhood: string, method: "geolocation" | "picker") => {
-    setHood(neighborhood);
+  const save = (n: string, method: "geolocation" | "picker") => {
+    onChange(n);
     fetch("/api/location", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ neighborhood, method }),
+      body: JSON.stringify({ neighborhood: n, method }),
     }).catch(() => {});
   };
 
@@ -38,17 +43,16 @@ export default function NearbyPanel({ initialNeighborhood }: { initialNeighborho
     );
   };
 
-  const activities = useMemo(() => (hood ? fakeActivities(hood) : []), [hood]);
-
   return (
-    <div className="nearby">
+    <div className={`nearby ${highlight ? "nearby-hl" : ""}`}>
       <div className="nearby-head">
         <div>
-          <p className="eyebrow">Running near you</p>
-          <h3>{hood ? hood : "Where do you live?"}</h3>
+          <p className="eyebrow">Step 1 · Where do you live?</p>
+          <h3>{neighborhood ?? "Pick your neighborhood"}</h3>
         </div>
         <span className="pill pill-sample">Sample data</span>
       </div>
+      <p className="nearby-sub">The prototype fills with groups that could be running near you.</p>
 
       <div className="loc-controls">
         <button className="btn btn-ghost" onClick={locate} disabled={status === "locating"}>
@@ -57,11 +61,7 @@ export default function NearbyPanel({ initialNeighborhood }: { initialNeighborho
         <label className="sr-only" htmlFor="hood-select">
           Neighborhood
         </label>
-        <select
-          id="hood-select"
-          value={hood ?? ""}
-          onChange={(e) => e.target.value && save(e.target.value, "picker")}
-        >
+        <select ref={ref} id="hood-select" value={neighborhood ?? ""} onChange={(e) => e.target.value && save(e.target.value, "picker")}>
           <option value="">Pick a neighborhood…</option>
           {BOROUGHS.map((b) => (
             <optgroup key={b} label={b}>
@@ -78,52 +78,25 @@ export default function NearbyPanel({ initialNeighborhood }: { initialNeighborho
       {status === "outside" && <p className="loc-msg">Looks like you&apos;re outside NYC right now — pick a neighborhood to preview.</p>}
       <p className="loc-fine">We only keep your neighborhood, never your exact location.</p>
 
-      {hood ? (
-        <ul className="act-list">
-          {activities.map((a) => (
-            <li key={a.id} className="act">
-              <div className="act-top">
-                <span className="act-cat" style={{ "--h": a.hue } as React.CSSProperties}>
-                  {a.category}
-                </span>
-                <span className="act-dist">{a.distanceMi} mi</span>
-              </div>
-              <h4>{a.title}</h4>
-              <p className="act-when">
-                {a.when} · {a.cadence} · at {a.venue}
-              </p>
-              <div className="act-host">
-                <span className="avatar" style={{ "--h": a.hue } as React.CSSProperties}>
-                  {a.host.initials}
-                </span>
-                <span>
-                  Hosted by <strong>{a.host.name}</strong>
-                  <span className="act-rating">
-                    ★ {a.host.rating.toFixed(1)} · {a.host.sessions} meetups
-                  </span>
-                </span>
-              </div>
-              <div className="act-foot">
-                <span className="faces" aria-label={`${a.attendees} regulars going`}>
-                  {a.regulars.map((r, i) => (
-                    <span key={i} className="face">
-                      {r}
-                    </span>
-                  ))}
-                  <span className="faces-n">
-                    {a.attendees}/{a.capacity} going
-                  </span>
-                </span>
-                <span className="spots">
-                  {a.newcomerSpots} newcomer spot{a.newcomerSpots > 1 ? "s" : ""}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="act-empty">Pick a neighborhood to see sample groups nearby.</div>
-      )}
+      <div className="try">
+        <p className="eyebrow">Step 2 · Try it</p>
+        <ol>
+          <li>
+            <strong>Browse</strong> groups that already meet every week near you.
+          </li>
+          <li>
+            <strong>Open one and tap Join</strong>: newcomer spots are held so you&apos;re in as a regular.
+          </li>
+          <li>
+            <strong>My Activities → Past → Meet Again</strong>: privately pick who you&apos;d see again.
+          </li>
+          <li>
+            <strong>Tap +</strong> to see how hosting works.
+          </li>
+        </ol>
+      </div>
     </div>
   );
-}
+});
+
+export default NearbyPanel;

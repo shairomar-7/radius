@@ -112,7 +112,7 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.15; }
 
 .phone-col { display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .phone {
-  position: relative; width: 400px; height: 820px; max-width: 100%;
+  position: relative; width: 400px; height: clamp(620px, calc(100vh - 150px), 820px); max-width: 100%;
   border-radius: 54px; padding: 14px; background: #121110;
   box-shadow: 0 30px 60px rgba(29, 26, 22, 0.22), inset 0 0 0 2px #2c2a27;
 }
@@ -268,3 +268,16 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.15; }
 .c3 { left: 60px; bottom: 30px; animation-delay: -4s; }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (max-width: 1220px) { .hero-art { display: none; } }
+
+/* prototype panel */
+.phone { background: #121110; }
+.phone iframe { background: #f7f4ed; }
+.nearby-sub { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
+.nearby-hl { box-shadow: 0 0 0 3px var(--accent), var(--shadow); transition: box-shadow 0.2s; }
+.try { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.try ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 10px; color: var(--ink-2); font-size: 15px; }
+.try li::marker { color: var(--accent); font-weight: 700; }
+.try strong { color: var(--ink); }
+.cta-nudge { background: rgba(253, 228, 217, 0.95); }
+.cta-nudge .btn-primary { animation: nudge 1.2s ease-in-out 3; }
+@keyframes nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }

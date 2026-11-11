@@ -118,7 +118,7 @@ export default function Dashboard({ stats, settings, includeTest }: Props) {
         <Kpi label="Visitors" value={visits.toLocaleString()} sub="unique browsers" />
         <Kpi label="Signups" value={signups.toLocaleString()} sub="name + email" />
         <Kpi label="Interest rate" value={pct(signups, visits)} sub="visitors → signup" accent />
-        <Kpi label="Would pay" value={pct(wtpYes, wtpN)} sub={`yes, across ${wtpN} answers`} />
+        <Kpi label="Would pay" value={pct(wtpYes, wtpN)} sub={`${wtpYes} yes · ${wtpN - wtpYes} no (${wtpN} answers)`} />
       </section>
 
       <div className="adm-grid">
@@ -347,22 +347,27 @@ function ExperimentCard({
             <div className="exp-row-head">
               <span className="exp-variant">{d.label}</span>
               <span className="exp-rate">
-                <strong>{d.n ? `${Math.round(d.rate * 100)}%` : "—"}</strong> said yes
+                <strong>{d.n ? `${Math.round(d.rate * 100)}%` : "—"}</strong> yes
               </span>
             </div>
             <div className="bar-track lg" title={d.n ? `95% CI ${Math.round(d.lo * 100)}–${Math.round(d.hi * 100)}%` : ""}>
               <div className="bar-fill" style={{ width: `${d.rate * 100}%` }} />
               {d.n > 0 && <div className="ci" style={{ left: `${d.lo * 100}%`, width: `${(d.hi - d.lo) * 100}%` }} />}
             </div>
-            <div className="exp-row-foot">
-              <span>n = {d.n} answered ({d.yes} yes)</span>
-              <span>{d.assigned} assigned</span>
+            <div className="yn">
+              <span className="yn-yes">
+                <i /> Yes <b>{d.yes}</b> {d.n ? `(${Math.round((d.yes / d.n) * 100)}%)` : ""}
+              </span>
+              <span className="yn-no">
+                <i /> No <b>{d.n - d.yes}</b> {d.n ? `(${Math.round(((d.n - d.yes) / d.n) * 100)}%)` : ""}
+              </span>
+              <span className="yn-n">n = {d.n} · {d.assigned} assigned</span>
             </div>
           </div>
         ))}
       </div>
       <p className="verdict">{verdict}</p>
-      <p className="legend-note">Bar = yes-rate · thin band = 95% confidence interval</p>
+      <p className="legend-note">Orange = yes, beige = no · thin band = 95% confidence interval for the yes-rate</p>
     </section>
   );
 }

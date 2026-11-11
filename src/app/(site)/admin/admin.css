@@ -101,3 +101,9 @@
   .card-head { flex-wrap: wrap; }
 }
 .show-all { margin-top: 14px; }
+.yn { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; align-items: center; }
+.yn b { color: var(--ink); font-weight: 700; }
+.yn i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.yn-yes i { background: var(--accent); }
+.yn-no i { background: var(--sand); border: 1px solid #d9ccb8; }
+.yn-n { margin-left: auto; font-size: 12px; color: var(--ink-3); }
